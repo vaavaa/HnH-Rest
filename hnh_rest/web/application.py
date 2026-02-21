@@ -1,7 +1,7 @@
 import logging
 
 from fastapi import FastAPI
-from fastapi.responses import UJSONResponse
+from fastapi.responses import ORJSONResponse
 from hnh_rest.settings import settings
 from hnh_rest.web.api.router import api_router
 
@@ -28,7 +28,7 @@ def get_app() -> FastAPI:
         redoc_url=None,
         
         openapi_url="/api/openapi.json",
-        default_response_class=UJSONResponse,
+        default_response_class=ORJSONResponse,
     )
 
     # Main router for the API.

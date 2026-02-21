@@ -47,6 +47,8 @@ class Settings(BaseSettings):
     db_pass: str = "hnh_rest"  # noqa: S105
     db_base: str = "admin"
     db_echo: bool = False
+    db_pool_size: int = 5
+    db_max_overflow: int = 10
 
     # Variables for Redis
     redis_host: str = "hnh_rest-redis"

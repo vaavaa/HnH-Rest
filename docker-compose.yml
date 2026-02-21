@@ -35,6 +35,8 @@ services:
     volumes:
       - hnh_rest-db-data:/var/lib/postgresql
     restart: always
+    ports:
+      - "5432:5432"
     healthcheck:
       test: pg_isready -U hnh_rest
       interval: 2s
@@ -55,6 +57,8 @@ services:
     restart: always
     environment:
       ALLOW_EMPTY_PASSWORD: "yes"
+    ports:
+      - "6379:6379"
     healthcheck:
       test: redis-cli ping
       interval: 1s

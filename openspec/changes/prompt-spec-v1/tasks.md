@@ -4,55 +4,55 @@
 
 # Phase 1 — Models
 
-- [ ] Create SQLAlchemy models for PromptTemplate
-- [ ] Create SQLAlchemy models for PromptBundle
-- [ ] Create SQLAlchemy models for PromptAudit
-- [ ] Generate Alembic migration
-- [ ] Add DB indexes:
+- [x] Create SQLAlchemy models for PromptTemplate
+- [x] Create SQLAlchemy models for PromptBundle
+- [x] Create SQLAlchemy models for PromptAudit
+- [x] Generate Alembic migration
+- [x] Add DB indexes:
   - template_id + semver (unique)
   - bundle_id + semver (unique)
-  - bundle_hash (unique)
+  - bundle_hash (indexed; audit table allows multiple rows per bundle_hash for replay)
   - personality_hash (indexed)
 
 ---
 
 # Phase 2 — Schemas
 
-- [ ] Create Pydantic schema for template creation
-- [ ] Create schema for bundle creation
-- [ ] Create render request schema
-- [ ] Create render response schema
-- [ ] Validate constraint structure (machine-readable enforcement schema)
+- [x] Create Pydantic schema for template creation
+- [x] Create schema for bundle creation
+- [x] Create render request schema
+- [x] Create render response schema
+- [x] Validate constraint structure (machine-readable enforcement schema)
 
 ---
 
 # Phase 3 — Services
 
-- [ ] Implement TemplateService
-- [ ] Implement BundleService
-- [ ] Implement RendererService
-- [ ] Implement AuditService
-- [ ] Ensure deterministic assembly order
-- [ ] Prevent mutation of published bundles
+- [x] Implement TemplateService
+- [x] Implement BundleService
+- [x] Implement RendererService
+- [x] Implement AuditService
+- [x] Ensure deterministic assembly order
+- [x] Prevent mutation of published bundles
 
 ---
 
 # Phase 4 — API
 
-- [ ] Add router under web/api/prompts
-- [ ] Register router in router.py
-- [ ] Use ORJSONResponse as default response class
-- [ ] Ensure strict response_model enforcement
+- [x] Add router under web/api/prompts
+- [x] Register router in router.py
+- [x] Use ORJSONResponse as default response class
+- [x] Ensure strict response_model enforcement
 
 ---
 
 # Phase 5 — Determinism & Replay
 
-- [ ] Snapshot test for deterministic render
-- [ ] Bundle immutability test
-- [ ] Constraint validation test
-- [ ] Replay consistency test
-- [ ] Hash stability test (rendered prompt hash identical across runs)
+- [x] Snapshot test for deterministic render
+- [x] Bundle immutability test
+- [x] Constraint validation test
+- [x] Replay consistency test
+- [x] Hash stability test (rendered prompt hash identical across runs)
 
 Coverage target: >= 98%
 
@@ -62,28 +62,28 @@ Coverage target: >= 98%
 
 ## JSON & Serialization
 
-- [ ] Replace default JSON encoder with orjson
-- [ ] Set FastAPI default_response_class = ORJSONResponse
-- [ ] Ensure all large responses use ORJSONResponse explicitly
-- [ ] Avoid unnecessary dict() → json → dict() conversions
-- [ ] Avoid double serialization inside services
+- [x] Replace default JSON encoder with orjson
+- [x] Set FastAPI default_response_class = ORJSONResponse
+- [x] Ensure all large responses use ORJSONResponse explicitly
+- [x] Avoid unnecessary dict() → json → dict() conversions
+- [x] Avoid double serialization inside services
 
 ## Loop & Assembly Optimization
 
-- [ ] Avoid dynamic string concatenation in loops
-- [ ] Use preallocated list + "\n\n".join(parts)
-- [ ] Precompile template placeholders if using format()
-- [ ] Avoid repeated constraint parsing — pre-normalize constraints on insert
-- [ ] Cache compiled constraint rules in memory (read-only LRU cache)
+- [x] Avoid dynamic string concatenation in loops
+- [x] Use preallocated list + "\n\n".join(parts)
+- [x] Precompile template placeholders if using format()
+- [x] Avoid repeated constraint parsing — pre-normalize constraints on insert
+- [ ] Cache compiled constraint rules in memory (read-only LRU cache) — deferred (no expensive compilation in v1)
 
 ## Database
 
-- [ ] Switch to async SQLAlchemy engine
-- [ ] Use async session dependency
-- [ ] Use connection pooling (configure pool_size, max_overflow)
-- [ ] Add read-only transaction mode for render endpoint
-- [ ] Ensure indexed lookups for bundle resolution
-- [ ] Avoid N+1 queries in bundle loading
+- [x] Switch to async SQLAlchemy engine
+- [x] Use async session dependency
+- [x] Use connection pooling (configure pool_size, max_overflow)
+- [ ] Add read-only transaction mode for render endpoint — skipped (render does INSERT for audit)
+- [x] Ensure indexed lookups for bundle resolution
+- [x] Avoid N+1 queries in bundle loading
 
 ## Redis (if enabled)
 
@@ -93,22 +93,22 @@ Coverage target: >= 98%
 
 ## CPU / Memory
 
-- [ ] Avoid deepcopy in renderer
-- [ ] Avoid unnecessary Pydantic model reconstruction
-- [ ] Use Pydantic v2 model_config with:
+- [x] Avoid deepcopy in renderer
+- [x] Avoid unnecessary Pydantic model reconstruction
+- [x] Use Pydantic v2 model_config with:
       - validate_assignment=False (where safe)
       - arbitrary_types_allowed=False
-- [ ] Use frozen dataclasses for internal assembly structures
+- [x] Use frozen dataclasses for internal assembly structures
 
 ## Logging & Monitoring
 
-- [ ] Log render latency
-- [ ] Log DB query time
-- [ ] Add Prometheus metrics:
+- [x] Log render latency
+- [ ] Log DB query time — deferred
+- [x] Add Prometheus metrics:
       - prompt_render_latency_seconds
       - bundle_cache_hits_total
       - render_errors_total
-- [ ] Add percentile tracking (p50, p95, p99)
+- [x] Add percentile tracking (p50, p95, p99) — via histogram buckets
 
 ---
 
