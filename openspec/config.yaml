@@ -2,19 +2,26 @@ schema: spec-driven
 
 # Project context (optional)
 # This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  Project: hnh-rest — REST layer for the HnH (Human Needs Human) ecosystem. Source of truth for Prompt Registry, deterministic prompt rendering, and persona enforcement. Main package: hnh_rest/ (run from this repo).
+
+  Tech stack: Python 3.12+, FastAPI, Pydantic v2, SQLAlchemy (async) + asyncpg, Redis, Alembic, ujson, Prometheus. Dependency management: uv (uv sync, uv run). Tests: pytest, anyio, httpx.
+
+  Key dependency: HnH-Core (personality engine), imported as module `hnh`. HnH-Rest consumes its state and enforces how it is delivered to LLM prompts. Production MUST pin HnH-Core (PyPI or VCS tag); see openspec/specs/000-repo-and-deps.md for install and versioning.
+
+  Layout: hnh_rest/db (models, migrations), hnh_rest/services (e.g. redis), hnh_rest/web (application.py, lifespan), hnh_rest/web/api (router, endpoints: docs, echo, monitoring, redis). OpenAPI at /api/openapi.json, docs at /api/docs.
+
+  Domain: versioned prompt templates, immutable bundles, deterministic assembly, constraint validation, audit/replay. No personality computation here — only delivery to LLMs.
+
+  Conventions: isort profile black, mypy strict, pytest with anyio_mode auto. Docker: docker-compose up; dev overlay deploy/docker-compose.dev.yml.
+
+  Commits (v1): One feature branch per change (e.g. feature/<change-name>). Commit OpenSpec artifacts before implementation. Commit each phase separately. Every commit MUST include change-id: <change-name> in the message (e.g. change-id: prompt-spec-v1). Do not modify spec/design after implementation begins — use a new change if requirements change.
 
 # Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+rules:
+  tasks:
+    - When implementing: one commit per phase; every commit message must reference the change (change-id: <chnge-name>); do not change proposal/specs/design after implementation starts (open a new change instead).
+# Example (more rules):
+#   proposal:
+#     - Keep proposals under 500 words
+#     - Always include a "Non-goals" section

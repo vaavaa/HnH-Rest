@@ -1,5 +1,7 @@
 # Design — Prompt Registry & Renderer Service
 
+**Project context (mandatory for implementation):** Before implementing, read the project-level spec `openspec/specs/000-repo-and-deps.md`. It defines HnH-Rest as source of truth, the HnH-Core dependency (import as `hnh`), install options, and production pinning policy. All implementation MUST comply with it.
+
 ## 1. Architecture
 
 HnH Engine

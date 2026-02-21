@@ -132,6 +132,15 @@ Coverage target: >= 98%
 
 ---
 
+# Phase 9 — Version Control Discipline
+
+- [ ] Create feature branch: feature/prompt-spec-v1
+- [ ] Commit OpenSpec artifacts before implementation
+- [ ] Commit each phase separately
+- [ ] Do not modify spec after implementation begins (unless new change)
+- [ ] All commits must reference change-id: prompt-spec-v1
+
+
 # Future (not in v1 but tracked)
 
 - [ ] MCP adapter layer
