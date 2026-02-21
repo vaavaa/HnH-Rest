@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: ./Dockerfile
     image: hnh_rest:${HNH_REST_VERSION:-latest}
+    pull_policy: never
     restart: always
     env_file:
       - path: .env
@@ -25,7 +26,7 @@ services:
       HNH_REST_REDIS_HOST: hnh_rest-redis
 
   db:
-    image: postgres:18.1-bookworm
+    image: postgres:18.2-bookworm
     hostname: hnh_rest-db
     environment:
       POSTGRES_PASSWORD: "hnh_rest"
@@ -49,7 +50,7 @@ services:
         condition: service_healthy
 
   redis:
-    image: redis:8.4.0
+    image: redis:8.6.0
     hostname: "hnh_rest-redis"
     restart: always
     environment:
@@ -59,8 +60,6 @@ services:
       interval: 1s
       timeout: 3s
       retries: 50
-
-
 
 volumes:
   hnh_rest-db-data:
