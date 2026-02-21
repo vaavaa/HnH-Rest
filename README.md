@@ -1,162 +1,70 @@
-# hnh_rest
+# hnh-rest
 
-This project was generated using fastapi_template.
+**hnh-rest** is the REST layer for the HnH (Human Needs Human) ecosystem.
 
-## UV
+It provides a versioned Prompt Specification system and deterministic prompt rendering
+on top of `hnh-core`, enabling controlled personality enforcement for AI agents.
 
-This project uses uv. It's a modern dependency management
-tool.
+---
 
-To run the project use this set of commands:
+## Purpose
 
-```bash
-uv sync --locked
-uv run -m hnh_rest
-```
+While `hnh-core` calculates personality state (natal, transits, 32D behavior, lifecycle),
+`hnh-rest` ensures that LLMs:
 
-This will start the server on the configured host.
+- Respect personality weights
+- Follow explicit behavioral constraints
+- Produce reproducible outputs
+- Support audit and replay
 
-You can find swagger documentation at `/api/docs`.
+This service acts as a **Prompt Registry + Renderer** for AI agent systems.
 
-You can read more about uv here: https://docs.astral.sh/ruff/
+---
 
-## Docker
+## Core Responsibilities
 
-You can start the project with docker using this command:
+- Versioned Prompt Templates
+- Immutable Prompt Bundles
+- Deterministic Prompt Assembly
+- Persona Enforcement Contracts
+- Audit & Replay Support
+- Performance-optimized JSON (orjson)
+- Async PostgreSQL support
 
-```bash
-docker-compose up --build
-```
+---
 
-If you want to develop in docker with autoreload and exposed ports add `-f deploy/docker-compose.dev.yml` to your docker command.
-Like this:
-
-```bash
-docker-compose -f docker-compose.yml -f deploy/docker-compose.dev.yml --project-directory . up --build
-```
-
-This command exposes the web application on port 8000, mounts current directory and enables autoreload.
-
-But you have to rebuild image every time you modify `uv.lock` or `pyproject.toml` with this command:
-
-```bash
-docker-compose build
-```
-
-## Project structure
-
-```bash
-$ tree "hnh_rest"
-hnh_rest
-├── conftest.py  # Fixtures for all tests.
-├── db  # module contains db configurations
-│   ├── dao  # Data Access Objects. Contains different classes to interact with database.
-│   └── models  # Package contains different models for ORMs.
-├── __main__.py  # Startup script. Starts uvicorn.
-├── services  # Package for different external services such as rabbit or redis etc.
-├── settings.py  # Main configuration settings for project.
-├── static  # Static content.
-├── tests  # Tests for project.
-└── web  # Package contains web server. Handlers, startup config.
-    ├── api  # Package with all handlers.
-    │   └── router.py  # Main router.
-    ├── application.py  # FastAPI application configuration.
-    └── lifespan.py  # Contains actions to perform on startup and shutdown.
-```
-
-## Configuration
-
-This application can be configured with environment variables.
-
-You can create `.env` file in the root directory and place all
-environment variables here. 
-
-All environment variables should start with "HNH_REST_" prefix.
-
-For example if you see in your "hnh_rest/settings.py" a variable named like
-`random_parameter`, you should provide the "HNH_REST_RANDOM_PARAMETER" 
-variable to configure the value. This behaviour can be changed by overriding `env_prefix` property
-in `hnh_rest.settings.Settings.Config`.
-
-An example of .env file:
-```bash
-HNH_REST_RELOAD="True"
-HNH_REST_PORT="8000"
-HNH_REST_ENVIRONMENT="dev"
-```
-
-You can read more about BaseSettings class here: https://pydantic-docs.helpmanual.io/usage/settings/
-
-## Pre-commit
-
-To install pre-commit simply run inside the shell:
-```bash
-pre-commit install
-```
-
-pre-commit is very useful to check your code before publishing it.
-It's configured using .pre-commit-config.yaml file.
-
-By default it runs:
-* mypy (validates types);
-* ruff (spots possible bugs);
+## Architecture
 
 
-You can read more about pre-commit here: https://pre-commit.com/
-
-## Migrations
-
-If you want to migrate your database, you should run following commands:
-```bash
-# To run all migrations until the migration with revision_id.
-alembic upgrade "<revision_id>"
-
-# To perform all pending migrations.
-alembic upgrade "head"
-```
-
-### Reverting migrations
-
-If you want to revert migrations, you should run:
-```bash
-# revert all migrations up to: revision_id.
-alembic downgrade <revision_id>
-
-# Revert everything.
- alembic downgrade base
-```
-
-### Migration generation
-
-To generate migrations you should run:
-```bash
-# For automatic change detection.
-alembic revision --autogenerate
-
-# For empty file generation.
-alembic revision
-```
+hnh-core
+↓
+Personality Adapter
+↓
+hnh-rest (Prompt Registry + Renderer)
+↓
+LLM
 
 
-## Running tests
+`hnh-rest` does not calculate personality —
+it enforces how personality is delivered to language models.
 
-If you want to run it in docker, simply run:
+---
 
-```bash
-docker-compose run --build --rm api pytest -vv .
-docker-compose down
-```
+## Why It Exists
 
-For running tests on your local machine.
-1. you need to start a database.
+Numeric personality vectors alone are not sufficient for LLM control.
 
-I prefer doing it with docker:
-```
-docker run -p "5432:5432" -e "POSTGRES_PASSWORD=hnh_rest" -e "POSTGRES_USER=hnh_rest" -e "POSTGRES_DB=hnh_rest" postgres:18.1-bookworm
-```
+This service ensures:
 
+- Structured constraint enforcement
+- Version-controlled prompt evolution
+- Stable AI behavior over time
+- Regression-testable personality rendering
 
-2. Run the pytest.
-```bash
-pytest -vv .
-```
+---
+
+## Status
+
+Part of the HnH open-source ecosystem.
+
+See `hnh-core` for personality engine.
