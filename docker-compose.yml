@@ -1,0 +1,67 @@
+services:
+  api: &main_app
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    image: hnh_rest:${HNH_REST_VERSION:-latest}
+    restart: always
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    environment:
+      HNH_REST_HOST: 0.0.0.0
+      HNH_REST_DB_HOST: hnh_rest-db
+      HNH_REST_DB_PORT: 5432
+      HNH_REST_DB_USER: hnh_rest
+      HNH_REST_DB_PASS: hnh_rest
+      HNH_REST_DB_BASE: hnh_rest
+      HNH_REST_REDIS_HOST: hnh_rest-redis
+
+  db:
+    image: postgres:18.1-bookworm
+    hostname: hnh_rest-db
+    environment:
+      POSTGRES_PASSWORD: "hnh_rest"
+      POSTGRES_USER: "hnh_rest"
+      POSTGRES_DB: "hnh_rest"
+    volumes:
+      - hnh_rest-db-data:/var/lib/postgresql
+    restart: always
+    healthcheck:
+      test: pg_isready -U hnh_rest
+      interval: 2s
+      timeout: 3s
+      retries: 40
+
+  migrator:
+    <<: *main_app
+    restart: "no"
+    command: alembic upgrade head
+    depends_on:
+      db:
+        condition: service_healthy
+
+  redis:
+    image: redis:8.4.0
+    hostname: "hnh_rest-redis"
+    restart: always
+    environment:
+      ALLOW_EMPTY_PASSWORD: "yes"
+    healthcheck:
+      test: redis-cli ping
+      interval: 1s
+      timeout: 3s
+      retries: 50
+
+
+
+volumes:
+  hnh_rest-db-data:
+    name: hnh_rest-db-data
