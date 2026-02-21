@@ -29,8 +29,8 @@ class Settings(BaseSettings):
     with environment variables.
     """
 
-    host: str = "127.0.0.1"
-    port: int = 8000
+    host: str = "0.0.0.0"
+    port: int = 8800
     # quantity of workers for uvicorn
     workers_count: int = 1
     # Enable uvicorn reloading
@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     db_port: int = 5432
     db_user: str = "hnh_rest"
     db_pass: str = "hnh_rest"  # noqa: S105
-    db_base: str = "admin"
+    db_base: str = "hnh_rest"
     db_echo: bool = False
     db_pool_size: int = 5
     db_max_overflow: int = 10
