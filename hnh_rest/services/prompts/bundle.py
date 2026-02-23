@@ -55,3 +55,15 @@ class BundleService:
     async def exists(self, bundle_id: str, semver: str) -> bool:
         """Check if a bundle with (bundle_id, semver) exists (for immutability: no overwrite)."""
         return await self.get_by_bundle_id_semver(bundle_id, semver) is not None
+
+    async def is_template_used(self, template_id: UUID) -> bool:
+        """Check if any bundle references this template (any of the four template slots)."""
+        result = await self._session.execute(
+            select(PromptBundle.id).where(
+                (PromptBundle.system_template_id == template_id)
+                | (PromptBundle.personality_template_id == template_id)
+                | (PromptBundle.activity_template_id == template_id)
+                | (PromptBundle.task_template_id == template_id),
+            ).limit(1)
+        )
+        return result.scalar_one_or_none() is not None

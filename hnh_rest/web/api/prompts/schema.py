@@ -2,10 +2,18 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, field_validator
+
+# Strict semver: major.minor.patch with optional -prerelease and +build
+SEMVER_PATTERN = re.compile(
+    r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
+    r"(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?"
+    r"(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$"
+)
 
 
 # ---- Constraint structure (machine-readable enforcement schema) ----
@@ -32,6 +40,13 @@ def validate_constraint_structure(value: dict[str, Any] | None) -> dict[str, Any
 
 # ---- Template creation ----
 
+def _validate_semver(v: str) -> str:
+    """Strict semver format: major.minor.patch[-prerelease][+build]."""
+    if not SEMVER_PATTERN.match(v):
+        raise ValueError("semver must match major.minor.patch (e.g. 1.0.0)")
+    return v
+
+
 class TemplateCreate(BaseModel):
     """Schema for creating a prompt template."""
 
@@ -42,6 +57,11 @@ class TemplateCreate(BaseModel):
     constraints: dict[str, Any] | None = None
 
     model_config = {"extra": "forbid"}
+
+    @field_validator("semver")
+    @classmethod
+    def semver_format(cls, v: str) -> str:
+        return _validate_semver(v)
 
     @model_validator(mode="after")
     def validate_constraint_structure(self) -> "TemplateCreate":
@@ -64,6 +84,11 @@ class BundleCreate(BaseModel):
     task_template_id: UUID
 
     model_config = {"extra": "forbid"}
+
+    @field_validator("semver")
+    @classmethod
+    def semver_format(cls, v: str) -> str:
+        return _validate_semver(v)
 
 
 # ---- Render request (Personality Adapter contract) ----

@@ -114,9 +114,9 @@ Coverage target: >= 98%
 
 # Phase 7 — Concurrency & Scalability
 
-- [ ] Ensure all DB calls are async
-- [ ] Ensure Redis calls are async
-- [ ] Avoid blocking CPU in request path
+- [x] Ensure all DB calls are async
+- [x] Ensure Redis calls are async
+- [x] Avoid blocking CPU in request path
 - [ ] Benchmark render endpoint under load (locust or k6)
 - [ ] Validate no race condition when publishing bundle versions
 
@@ -124,11 +124,11 @@ Coverage target: >= 98%
 
 # Phase 8 — Security & Integrity
 
-- [ ] Prevent overwriting existing semver
-- [ ] Validate semver format strictly
-- [ ] Prevent template deletion if used by active bundle
-- [ ] Validate constraint schema before DB insert
-- [ ] Protect audit records from mutation
+- [x] Prevent overwriting existing semver
+- [x] Validate semver format strictly
+- [x] Prevent template deletion if used by active bundle
+- [x] Validate constraint schema before DB insert
+- [x] Protect audit records from mutation
 
 ---
 

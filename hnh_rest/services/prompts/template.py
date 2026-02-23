@@ -49,3 +49,12 @@ class TemplateService:
             )
         )
         return result.scalar_one_or_none()
+
+    async def delete_by_id(self, id: UUID) -> bool:
+        """Delete template by id. Returns True if deleted, False if not found."""
+        template = await self.get_by_id(id)
+        if template is None:
+            return False
+        await self._session.delete(template)
+        await self._session.flush()
+        return True

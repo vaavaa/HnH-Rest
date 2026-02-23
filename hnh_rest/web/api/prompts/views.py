@@ -51,6 +51,8 @@ async def create_template(
     svc: TemplateService = Depends(_template_svc),
 ) -> TemplateRead:
     """Create a prompt template. Conflict if (template_id, semver) already exists."""
+    if await svc.get_by_template_id_semver(body.template_id, body.semver) is not None:
+        raise HTTPException(409, detail="Template with this template_id and semver already exists")
     try:
         template = await svc.create(
             template_id=body.template_id,
@@ -62,6 +64,23 @@ async def create_template(
         return TemplateRead.model_validate(template)
     except IntegrityError:
         raise HTTPException(409, detail="Template with this template_id and semver already exists")
+
+
+@router.delete("/templates/{template_id}", status_code=204)
+async def delete_template(
+    template_id: UUID,
+    svc: TemplateService = Depends(_template_svc),
+    bundle_svc: BundleService = Depends(_bundle_svc),
+) -> None:
+    """Delete a template. Conflict if any bundle references this template."""
+    if await bundle_svc.is_template_used(template_id):
+        raise HTTPException(
+            409,
+            detail="Cannot delete template: one or more bundles reference this template",
+        )
+    deleted = await svc.delete_by_id(template_id)
+    if not deleted:
+        raise HTTPException(404, detail="Template not found")
 
 
 @router.post("/bundles", response_model=BundleRead, status_code=201)

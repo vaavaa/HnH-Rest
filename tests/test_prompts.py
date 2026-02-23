@@ -2,7 +2,10 @@
 
 import pytest
 from httpx import AsyncClient
+from pydantic import ValidationError
 from starlette import status
+
+from hnh_rest.web.api.prompts.schema import BundleCreate, TemplateCreate
 
 
 async def _create_templates(client: AsyncClient) -> list[str]:
@@ -147,3 +150,48 @@ async def test_hash_stability(client: AsyncClient) -> None:
     assert r1.json()["bundle_hash"] == r2.json()["bundle_hash"]
     assert r1.json()["personality_hash"] == r2.json()["personality_hash"]
     assert r1.json()["rendered_prompt"] == r2.json()["rendered_prompt"]
+
+
+def test_semver_validation_strict() -> None:
+    """Phase 8 — Semver must match major.minor.patch format (strict validation)."""
+    TemplateCreate(
+        template_id="t",
+        semver="1.0.0",
+        role="system",
+        content="x",
+    )
+    with pytest.raises(ValidationError, match="semver"):
+        TemplateCreate(
+            template_id="t",
+            semver="invalid",
+            role="system",
+            content="x",
+        )
+    with pytest.raises(ValidationError, match="semver"):
+        TemplateCreate(
+            template_id="t",
+            semver="1.0",
+            role="system",
+            content="x",
+        )
+    # BundleCreate semver
+    from uuid import uuid4
+
+    uid = uuid4()
+    BundleCreate(
+        bundle_id="b",
+        semver="2.1.0-alpha",
+        system_template_id=uid,
+        personality_template_id=uid,
+        activity_template_id=uid,
+        task_template_id=uid,
+    )
+    with pytest.raises(ValidationError, match="semver"):
+        BundleCreate(
+            bundle_id="b",
+            semver="v1.0.0",
+            system_template_id=uid,
+            personality_template_id=uid,
+            activity_template_id=uid,
+            task_template_id=uid,
+        )
