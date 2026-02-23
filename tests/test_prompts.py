@@ -1,5 +1,7 @@
 """Phase 5 — Determinism & Replay tests for Prompt Spec v1."""
 
+import asyncio
+
 import pytest
 from httpx import AsyncClient
 from pydantic import ValidationError
@@ -94,6 +96,52 @@ async def test_bundle_immutability(client: AsyncClient) -> None:
         },
     )
     assert r.status_code == status.HTTP_409_CONFLICT
+
+
+async def _create_templates_race(client: AsyncClient) -> list[str]:
+    """Create 4 templates with unique ids for race test (avoids polluting DB for other tests)."""
+    templates = [
+        {"template_id": "race-sys", "semver": "1.0.0", "role": "system", "content": "System: {{task}}"},
+        {"template_id": "race-persona", "semver": "1.0.0", "role": "user", "content": "Persona {{activity_level}}"},
+        {"template_id": "race-activity", "semver": "1.0.0", "role": "user", "content": "Activity {{stress}}"},
+        {"template_id": "race-task", "semver": "1.0.0", "role": "user", "content": "Task: {{task}}"},
+    ]
+    ids = []
+    for t in templates:
+        r = await client.post("/api/v1/prompts/templates", json=t)
+        assert r.status_code == status.HTTP_201_CREATED, r.text
+        ids.append(r.json()["id"])
+    return ids
+
+
+@pytest.mark.anyio
+async def test_no_race_when_publishing_bundle_version(
+    client_per_request_session: AsyncClient,
+) -> None:
+    """Phase 7 — Concurrent create of same (bundle_id, semver): exactly one 201, rest 409, single row in DB."""
+    client = client_per_request_session
+    ids = await _create_templates_race(client)
+    payload = {
+        "bundle_id": "race-bundle",
+        "semver": "3.0.0",
+        "system_template_id": ids[0],
+        "personality_template_id": ids[1],
+        "activity_template_id": ids[2],
+        "task_template_id": ids[3],
+    }
+
+    async def post_bundle() -> int:
+        r = await client.post("/api/v1/prompts/bundles", json=payload)
+        return r.status_code
+
+    concurrency = 10
+    results = await asyncio.gather(*[post_bundle() for _ in range(concurrency)])
+
+    assert results.count(status.HTTP_201_CREATED) == 1, f"Expected exactly one 201, got {results}"
+    assert results.count(status.HTTP_409_CONFLICT) == concurrency - 1
+
+    get_r = await client.get("/api/v1/prompts/bundles/race-bundle?semver=3.0.0")
+    assert get_r.status_code == status.HTTP_200_OK
 
 
 @pytest.mark.anyio

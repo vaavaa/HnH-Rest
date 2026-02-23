@@ -117,8 +117,8 @@ Coverage target: >= 98%
 - [x] Ensure all DB calls are async
 - [x] Ensure Redis calls are async
 - [x] Avoid blocking CPU in request path
-- [ ] Benchmark render endpoint under load (locust or k6)
-- [ ] Validate no race condition when publishing bundle versions
+- [x] Benchmark render endpoint under load (locust or k6)
+- [x] Validate no race condition when publishing bundle versions
 
 ---
 

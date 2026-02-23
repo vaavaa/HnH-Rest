@@ -112,6 +112,35 @@ def fastapi_app(
 
 
 @pytest.fixture
+def fastapi_app_per_request_session(
+    _engine: AsyncEngine,
+    fake_redis_pool: ConnectionPool,
+) -> FastAPI:
+    """
+    App with a new DB session per request (for concurrency tests).
+    Each request commits and closes its own session.
+    """
+    session_factory = async_sessionmaker(
+        _engine,
+        expire_on_commit=False,
+        autoflush=False,
+    )
+
+    async def get_db_session_per_request() -> AsyncGenerator[AsyncSession, None]:
+        async with session_factory() as session:
+            try:
+                yield session
+            finally:
+                await session.commit()
+                await session.close()
+
+    application = get_app()
+    application.dependency_overrides[get_db_session] = get_db_session_per_request
+    application.dependency_overrides[get_redis_pool] = lambda: fake_redis_pool
+    return application
+
+
+@pytest.fixture
 async def client(
     fastapi_app: FastAPI,
     anyio_backend: Any
@@ -124,3 +153,17 @@ async def client(
     """
     async with AsyncClient(transport=ASGITransport(fastapi_app), base_url="http://test", timeout=2.0) as ac:
             yield ac
+
+
+@pytest.fixture
+async def client_per_request_session(
+    fastapi_app_per_request_session: FastAPI,
+    anyio_backend: Any,
+) -> AsyncGenerator[AsyncClient, None]:
+    """Client for app that uses a new DB session per request (for race/concurrency tests)."""
+    async with AsyncClient(
+        transport=ASGITransport(fastapi_app_per_request_session),
+        base_url="http://test",
+        timeout=5.0,
+    ) as ac:
+        yield ac
