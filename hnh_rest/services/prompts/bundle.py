@@ -22,8 +22,10 @@ class BundleService:
         personality_template_id: UUID,
         activity_template_id: UUID,
         task_template_id: UUID,
+        tags: list[str] | None = None,
     ) -> PromptBundle:
         """Create a new bundle. Raises if (bundle_id, semver) already exists. Once created, bundle is immutable."""
+        tag_list = tags if tags is not None else []
         bundle = PromptBundle(
             bundle_id=bundle_id,
             semver=semver,
@@ -31,6 +33,7 @@ class BundleService:
             personality_template_id=personality_template_id,
             activity_template_id=activity_template_id,
             task_template_id=task_template_id,
+            tags=tag_list,
         )
         self._session.add(bundle)
         await self._session.flush()

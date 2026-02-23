@@ -7,7 +7,11 @@ from httpx import AsyncClient
 from pydantic import ValidationError
 from starlette import status
 
-from hnh_rest.web.api.prompts.schema import BundleCreate, TemplateCreate
+from hnh_rest.web.api.prompts.schema import (
+    BundleCreate,
+    TemplateCreate,
+    _normalize_tags,
+)
 
 
 async def _create_templates(client: AsyncClient) -> list[str]:
@@ -200,6 +204,17 @@ async def test_hash_stability(client: AsyncClient) -> None:
     assert r1.json()["rendered_prompt"] == r2.json()["rendered_prompt"]
 
 
+def test_tags_normalization() -> None:
+    """BundleCreate normalizes tags: strip, unique, drop empty and over-length."""
+    assert _normalize_tags(None) == []
+    assert _normalize_tags([]) == []
+    assert _normalize_tags(["gpt-4o", "  gpt-4o  ", "default"]) == ["gpt-4o", "default"]
+    assert _normalize_tags(["a", "  ", ""]) == ["a"]
+    # Over 64 chars dropped (design: max 64)
+    long_tag = "x" * 65
+    assert _normalize_tags(["ok", long_tag]) == ["ok"]
+
+
 def test_semver_validation_strict() -> None:
     """Phase 8 — Semver must match major.minor.patch format (strict validation)."""
     TemplateCreate(
@@ -243,3 +258,142 @@ def test_semver_validation_strict() -> None:
             activity_template_id=uid,
             task_template_id=uid,
         )
+
+
+# ---- Bundle model tags (bundle-model-tags change) ----
+
+
+@pytest.mark.anyio
+async def test_bundle_create_with_tags_and_read_includes_tags(client: AsyncClient) -> None:
+    """Create bundle with tags and without; GET returns tags."""
+    ids = await _create_templates(client)
+    # Without tags
+    r1 = await client.post(
+        "/api/v1/prompts/bundles",
+        json={
+            "bundle_id": "tags-bundle",
+            "semver": "1.0.0",
+            "system_template_id": ids[0],
+            "personality_template_id": ids[1],
+            "activity_template_id": ids[2],
+            "task_template_id": ids[3],
+        },
+    )
+    assert r1.status_code == status.HTTP_201_CREATED
+    assert r1.json().get("tags") == []
+
+    get_r = await client.get("/api/v1/prompts/bundles/tags-bundle?semver=1.0.0")
+    assert get_r.status_code == status.HTTP_200_OK
+    assert get_r.json()["tags"] == []
+
+    # With tags
+    r2 = await client.post(
+        "/api/v1/prompts/bundles",
+        json={
+            "bundle_id": "tags-bundle",
+            "semver": "2.0.0",
+            "system_template_id": ids[0],
+            "personality_template_id": ids[1],
+            "activity_template_id": ids[2],
+            "task_template_id": ids[3],
+            "tags": ["gpt-4o", "default"],
+        },
+    )
+    assert r2.status_code == status.HTTP_201_CREATED
+    assert set(r2.json().get("tags", [])) == {"gpt-4o", "default"}
+
+    get_r2 = await client.get("/api/v1/prompts/bundles/tags-bundle?semver=2.0.0")
+    assert get_r2.status_code == status.HTTP_200_OK
+    assert set(get_r2.json()["tags"]) == {"gpt-4o", "default"}
+
+
+@pytest.mark.anyio
+async def test_render_without_model_type_unchanged(client: AsyncClient) -> None:
+    """Render without model_type works as before; bundle with tags=[] also works."""
+    ids = await _create_templates(client)
+    await _create_bundle(client, ids[0], ids[1], ids[2], ids[3], bundle_id="no-mt-bundle", semver="1.0.0")
+
+    r = await client.post(
+        "/api/v1/prompts/render",
+        json={"bundle_id": "no-mt-bundle", "semver": "1.0.0", "task": "x"},
+    )
+    assert r.status_code == status.HTTP_200_OK
+    assert "rendered_prompt" in r.json()
+
+
+@pytest.mark.anyio
+async def test_render_with_model_type_matching_tag_success(client: AsyncClient) -> None:
+    """Render with model_type that is in bundle.tags returns 200."""
+    ids = await _create_templates(client)
+    await client.post(
+        "/api/v1/prompts/bundles",
+        json={
+            "bundle_id": "mt-bundle",
+            "semver": "1.0.0",
+            "system_template_id": ids[0],
+            "personality_template_id": ids[1],
+            "activity_template_id": ids[2],
+            "task_template_id": ids[3],
+            "tags": ["gpt-4o", "default"],
+        },
+    )
+    r = await client.post(
+        "/api/v1/prompts/render",
+        json={
+            "bundle_id": "mt-bundle",
+            "semver": "1.0.0",
+            "model_type": "gpt-4o",
+            "task": "y",
+        },
+    )
+    assert r.status_code == status.HTTP_200_OK
+    assert "rendered_prompt" in r.json()
+
+
+@pytest.mark.anyio
+async def test_render_with_model_type_not_in_tags_returns_400(client: AsyncClient) -> None:
+    """Render with model_type not in bundle.tags returns 400 with detail and code."""
+    ids = await _create_templates(client)
+    await client.post(
+        "/api/v1/prompts/bundles",
+        json={
+            "bundle_id": "mt-bundle-400",
+            "semver": "1.0.0",
+            "system_template_id": ids[0],
+            "personality_template_id": ids[1],
+            "activity_template_id": ids[2],
+            "task_template_id": ids[3],
+            "tags": ["claude-3"],
+        },
+    )
+    r = await client.post(
+        "/api/v1/prompts/render",
+        json={
+            "bundle_id": "mt-bundle-400",
+            "semver": "1.0.0",
+            "model_type": "gpt-4o",
+            "task": "z",
+        },
+    )
+    assert r.status_code == status.HTTP_400_BAD_REQUEST
+    body = r.json()
+    assert body.get("code") == "bundle_unsupported_model"
+    assert "detail" in body
+
+
+@pytest.mark.anyio
+async def test_render_with_empty_string_model_type_skips_check(client: AsyncClient) -> None:
+    """Empty string model_type is treated as absent — no tag check, render succeeds."""
+    ids = await _create_templates(client)
+    await _create_bundle(client, ids[0], ids[1], ids[2], ids[3], bundle_id="empty-mt-bundle", semver="1.0.0")
+
+    r = await client.post(
+        "/api/v1/prompts/render",
+        json={
+            "bundle_id": "empty-mt-bundle",
+            "semver": "1.0.0",
+            "model_type": "",
+            "task": "w",
+        },
+    )
+    assert r.status_code == status.HTTP_200_OK

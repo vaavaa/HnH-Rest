@@ -14,6 +14,16 @@ from hnh_rest.db.models.prompt_template import PromptTemplate
 from hnh_rest.services.prompts.constraints_cache import get_compiled_constraints
 
 
+class BundleUnsupportedModelError(ValueError):
+    """Bundle does not support the requested model_type (not in bundle.tags)."""
+
+    def __init__(self, bundle_id: str, semver: str, model_type: str) -> None:
+        self.bundle_id = bundle_id
+        self.semver = semver
+        self.model_type = model_type
+        super().__init__(f"Bundle does not support model_type '{model_type}'")
+
+
 # Fixed assembly order (design: system → personality → activity → task)
 ASSEMBLY_ORDER = (
     "system_template_id",
@@ -108,16 +118,23 @@ class RendererService:
         activity_level: float,
         stress: float,
         task: str,
+        model_type: str | None = None,
         engine_version: str | None = None,
         adapter_version: str | None = None,
     ) -> tuple[str, str, str]:
         """
         Load bundle and templates (single query for templates), assemble in fixed order.
         Order: system → personality → activity → task; parts joined by "\\n\\n".
+        If model_type is provided (non-empty after strip), bundle must have it in tags.
         """
         bundle = await self._get_bundle(bundle_id, semver)
         if bundle is None:
             raise ValueError(f"Bundle not found: {bundle_id}@{semver}")
+
+        if model_type is not None and (mt := model_type.strip()):
+            tags_list = bundle.tags if isinstance(bundle.tags, list) else list(bundle.tags or [])
+            if mt not in tags_list:
+                raise BundleUnsupportedModelError(bundle_id, semver, mt)
 
         template_ids = [getattr(bundle, attr) for attr in ASSEMBLY_ORDER]
         templates_map = await self._get_templates_by_ids(template_ids)

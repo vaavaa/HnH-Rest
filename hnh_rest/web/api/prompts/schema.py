@@ -73,6 +73,25 @@ class TemplateCreate(BaseModel):
 
 # ---- Bundle creation ----
 
+TAG_MAX_LENGTH = 64
+
+
+def _normalize_tags(tags: list[str] | None) -> list[str]:
+    """Normalize tags: strip, drop empty, unique, max length per tag."""
+    if not tags:
+        return []
+    seen: set[str] = set()
+    result: list[str] = []
+    for t in tags:
+        s = (t or "").strip()
+        if not s or len(s) > TAG_MAX_LENGTH:
+            continue
+        if s not in seen:
+            seen.add(s)
+            result.append(s)
+    return result
+
+
 class BundleCreate(BaseModel):
     """Schema for creating a prompt bundle (template references)."""
 
@@ -82,6 +101,7 @@ class BundleCreate(BaseModel):
     personality_template_id: UUID
     activity_template_id: UUID
     task_template_id: UUID
+    tags: list[str] | None = None
 
     model_config = {"extra": "forbid"}
 
@@ -89,6 +109,11 @@ class BundleCreate(BaseModel):
     @classmethod
     def semver_format(cls, v: str) -> str:
         return _validate_semver(v)
+
+    @field_validator("tags", mode="after")
+    @classmethod
+    def normalize_tags(cls, v: list[str] | None) -> list[str]:
+        return _normalize_tags(v)
 
 
 # ---- Render request (Personality Adapter contract) ----
@@ -104,6 +129,7 @@ class RenderRequest(BaseModel):
 
     bundle_id: str = Field(..., min_length=1)
     bundle_version: str | None = Field(None, alias="semver")
+    model_type: str | None = None
     semantic_traits: dict[str, Any] = Field(default_factory=dict)
     activity_level: float = Field(0.0, ge=0.0, le=1.0)
     stress: float = Field(0.0, ge=0.0, le=1.0)
@@ -151,8 +177,18 @@ class BundleRead(BaseModel):
     personality_template_id: UUID
     activity_template_id: UUID
     task_template_id: UUID
+    tags: list[str] = Field(default_factory=list)
 
     model_config = {"extra": "forbid", "from_attributes": True, "validate_assignment": False}
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def coerce_tags_to_list(cls, v: Any) -> list[str]:
+        if v is None:
+            return []
+        if isinstance(v, list):
+            return [str(x) for x in v]
+        return []
 
 
 class AuditRead(BaseModel):

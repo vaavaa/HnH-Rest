@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from hnh_rest.db.dependencies import get_db_session
 from hnh_rest.db.models.prompt_audit import PromptAudit
 from hnh_rest.services.prompts import AuditService, BundleService, RendererService, TemplateService
+from hnh_rest.services.prompts.renderer import BundleUnsupportedModelError
 from hnh_rest.web.api.prompts.metrics import prompt_render_latency_seconds, render_errors_total
 from hnh_rest.web.api.prompts.schema import (
     AuditRead,
@@ -109,6 +110,7 @@ async def create_bundle(
             personality_template_id=body.personality_template_id,
             activity_template_id=body.activity_template_id,
             task_template_id=body.task_template_id,
+            tags=body.tags,
         )
         return BundleRead.model_validate(bundle)
     except IntegrityError:
@@ -145,6 +147,14 @@ async def render_prompt(
             activity_level=body.activity_level,
             stress=body.stress,
             task=body.task,
+            model_type=body.model_type,
+        )
+    except BundleUnsupportedModelError as e:
+        render_errors_total.inc()
+        logger.warning("Render failed (unsupported model): %s", e)
+        return ORJSONResponse(
+            status_code=400,
+            content={"detail": str(e), "code": "bundle_unsupported_model"},
         )
     except ValueError as e:
         render_errors_total.inc()
