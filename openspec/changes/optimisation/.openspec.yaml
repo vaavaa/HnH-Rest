@@ -1,0 +1,11 @@
+schema: spec-driven
+change_id: optimisation
+title: "Performance pass + non-DB prompt generator"
+status: proposed
+created: "2026-02-23"
+specs:
+  - specs/optimisation/spec.md
+artifacts:
+  - proposal.md
+  - design.md
+  - tasks.md

@@ -20,7 +20,7 @@ context: |
 # Per-artifact rules (optional)
 rules:
   tasks:
-    - When implementing: one commit per phase; every commit message must reference the change (change-id: <chnge-name>); do not change proposal/specs/design after implementation starts (open a new change instead).
+    - "When implementing: one commit per phase; every commit message must reference the change (change-id: <change-name>); do not change proposal/specs/design after implementation starts (open a new change instead)."
 # Example (more rules):
 #   proposal:
 #     - Keep proposals under 500 words
