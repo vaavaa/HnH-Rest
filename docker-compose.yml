@@ -65,6 +65,31 @@ services:
       timeout: 3s
       retries: 50
 
+  test:
+    build:
+      context: .
+      dockerfile: ./Dockerfile.testing
+    image: hnh_rest-test:${HNH_REST_VERSION:-latest}
+    pull_policy: never
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      HNH_REST_DB_HOST: hnh_rest-db
+      HNH_REST_DB_PORT: "5432"
+      HNH_REST_DB_USER: hnh_rest
+      HNH_REST_DB_PASS: hnh_rest
+      HNH_REST_DB_BASE: hnh_rest
+      HNH_REST_REDIS_HOST: hnh_rest-redis
+    command: ["python", "-m", "pytest", "-vv", "--tb=short", "."]
+    profiles:
+      - test
+
 volumes:
   hnh_rest-db-data:
     name: hnh_rest-db-data

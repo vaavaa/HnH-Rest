@@ -1,15 +1,17 @@
 """RendererService — deterministic prompt assembly and audit."""
 
 import hashlib
-import json
 from dataclasses import dataclass
 from typing import Any
+
+import orjson
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hnh_rest.db.models.prompt_bundle import PromptBundle
 from hnh_rest.db.models.prompt_template import PromptTemplate
+from hnh_rest.services.prompts.constraints_cache import get_compiled_constraints
 
 
 # Fixed assembly order (design: system → personality → activity → task)
@@ -33,17 +35,14 @@ class _RenderContext:
 
 def _personality_hash(semantic_traits: dict[str, Any], activity_level: float, stress: float, task: str) -> str:
     """Deterministic hash of personality/render input for replay identity."""
-    canonical = json.dumps(
-        {
-            "semantic_traits": _sort_dict(semantic_traits),
-            "activity_level": activity_level,
-            "stress": stress,
-            "task": task,
-        },
-        sort_keys=True,
-        separators=(",", ":"),
-    )
-    return hashlib.sha256(canonical.encode()).hexdigest()
+    payload = {
+        "semantic_traits": _sort_dict(semantic_traits),
+        "activity_level": activity_level,
+        "stress": stress,
+        "task": task,
+    }
+    canonical = orjson.dumps(payload, option=orjson.OPT_SORT_KEYS)
+    return hashlib.sha256(canonical).hexdigest()
 
 
 def _bundle_hash(bundle_id: str, semver: str) -> str:
@@ -63,6 +62,36 @@ def _substitute(content: str, context: _RenderContext) -> str:
     content = content.replace("{{stress}}", context.stress)
     content = content.replace("{{semantic_traits}}", context.semantic_traits_json)
     return content
+
+
+def assemble_and_hash(
+    bundle_id: str,
+    semver: str,
+    parts_content: list[str],
+    semantic_traits: dict[str, Any],
+    activity_level: float,
+    stress: float,
+    task: str,
+) -> tuple[str, str, str]:
+    """
+    Pure deterministic assembly: 4 content strings in order (system, personality, activity, task),
+    plus payload. Returns (rendered_prompt, bundle_hash, personality_hash).
+    Shared by DB and non-DB paths.
+    """
+    if len(parts_content) != 4:
+        raise ValueError("parts_content must have exactly 4 parts (system, personality, activity, task)")
+    traits_json = orjson.dumps(_sort_dict(semantic_traits), option=orjson.OPT_SORT_KEYS).decode()
+    context = _RenderContext(
+        task=task,
+        activity_level=str(activity_level),
+        stress=str(stress),
+        semantic_traits_json=traits_json,
+    )
+    parts = [_substitute(c, context) for c in parts_content]
+    rendered_prompt = "\n\n".join(parts)
+    b_hash = _bundle_hash(bundle_id, semver)
+    p_hash = _personality_hash(semantic_traits, activity_level, stress, task)
+    return rendered_prompt, b_hash, p_hash
 
 
 class RendererService:
@@ -96,17 +125,14 @@ class RendererService:
             if tid not in templates_map:
                 raise ValueError(f"Template not found: {tid}")
 
-        context = _RenderContext(
-            task=task,
-            activity_level=str(activity_level),
-            stress=str(stress),
-            semantic_traits_json=json.dumps(_sort_dict(semantic_traits), sort_keys=True, separators=(",", ":")),
+        for t in templates_map.values():
+            get_compiled_constraints(t.template_id, t.semver, t.constraints)
+
+        parts_content = [templates_map[tid].content for tid in template_ids]
+        return assemble_and_hash(
+            bundle_id, semver, parts_content,
+            semantic_traits, activity_level, stress, task,
         )
-        parts = [_substitute(templates_map[tid].content, context) for tid in template_ids]
-        rendered_prompt = "\n\n".join(parts)
-        b_hash = _bundle_hash(bundle_id, semver)
-        p_hash = _personality_hash(semantic_traits, activity_level, stress, task)
-        return rendered_prompt, b_hash, p_hash
 
     async def _get_bundle(self, bundle_id: str, semver: str) -> PromptBundle | None:
         """Load bundle by (bundle_id, semver). Indexed lookup."""

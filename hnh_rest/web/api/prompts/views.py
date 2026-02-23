@@ -5,6 +5,7 @@ import time
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import ORJSONResponse
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -127,7 +128,7 @@ async def get_bundle(
     return BundleRead.model_validate(bundle)
 
 
-@router.post("/render", response_model=RenderResponse)
+@router.post("/render", response_model=RenderResponse, response_class=ORJSONResponse)
 async def render_prompt(
     body: RenderRequest,
     renderer: RendererService = Depends(_renderer_svc),
