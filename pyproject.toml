@@ -16,6 +16,7 @@ dependencies = [
   "yarl >=1.22.0,<2",
   "orjson >=3.10.0,<4",
   "ujson >=5.11.0,<6",
+  "xxhash >=3.4.0,<5",
   "SQLAlchemy[asyncio] >=2.0.44,<3",
   "alembic >=1.17.2,<2",
   "asyncpg >=0.31.0,<1",

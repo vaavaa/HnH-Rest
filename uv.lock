@@ -751,6 +751,7 @@ dependencies = [
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "ujson" },
     { name = "uvicorn", extra = ["standard"] },
+    { name = "xxhash" },
     { name = "yarl" },
 ]
 
@@ -787,6 +788,7 @@ requires-dist = [
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.44,<3" },
     { name = "ujson", specifier = ">=5.11.0,<6" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.38.0,<1" },
+    { name = "xxhash", specifier = ">=3.4.0,<5" },
     { name = "yarl", specifier = ">=1.22.0,<2" },
 ]
 

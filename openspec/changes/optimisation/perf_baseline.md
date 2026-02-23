@@ -47,3 +47,7 @@ _Re-run same Locust command and record (приложение и DB должны 
 - **Failures**: 0
 - **Total requests**: 3727 за 60 s
 - **Improvement**: baseline до оптимизации не снимался — текущие цифры фиксируют состояние после change optimisation.
+
+## Доп. замеры
+
+- **После перехода на xxhash (xxh3_128)**: см. [perf_baseline_xxhash.md](./perf_baseline_xxhash.md).

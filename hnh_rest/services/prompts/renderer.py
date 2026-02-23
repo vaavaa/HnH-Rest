@@ -1,10 +1,10 @@
 """RendererService — deterministic prompt assembly and audit."""
 
-import hashlib
 from dataclasses import dataclass
 from typing import Any
 
 import orjson
+import xxhash
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,7 +34,7 @@ class _RenderContext:
 
 
 def _personality_hash(semantic_traits: dict[str, Any], activity_level: float, stress: float, task: str) -> str:
-    """Deterministic hash of personality/render input for replay identity."""
+    """Deterministic hash of personality/render input for replay identity (xxh3_128, non-crypto)."""
     payload = {
         "semantic_traits": _sort_dict(semantic_traits),
         "activity_level": activity_level,
@@ -42,12 +42,12 @@ def _personality_hash(semantic_traits: dict[str, Any], activity_level: float, st
         "task": task,
     }
     canonical = orjson.dumps(payload, option=orjson.OPT_SORT_KEYS)
-    return hashlib.sha256(canonical).hexdigest()
+    return xxhash.xxh3_128(canonical).hexdigest()
 
 
 def _bundle_hash(bundle_id: str, semver: str) -> str:
-    """Deterministic hash identifying the bundle version."""
-    return hashlib.sha256(f"{bundle_id}:{semver}".encode()).hexdigest()
+    """Deterministic hash identifying the bundle version (xxh3_128, non-crypto)."""
+    return xxhash.xxh3_128(f"{bundle_id}:{semver}".encode()).hexdigest()
 
 
 def _sort_dict(d: dict[str, Any]) -> dict[str, Any]:
